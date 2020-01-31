@@ -1,0 +1,85 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '0.4.10'
+    id 'deltix.gradle.plugin.gitlab-release' version '1.0.5'
+}
+
+apply from: "$rootDir/gradle/tools.gradle"
+apply from: "$rootDir/gradle/Release.gradle"
+
+group 'deltix'
+
+compileJava.options.encoding = 'UTF-8'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+apply plugin: 'antlr'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    antlr("org.antlr:antlr4:4.7.2") { // use ANTLR version 4
+        exclude group:'com.ibm.icu', module:'icu4j'
+    }
+    compile "org.antlr:antlr4-intellij-adaptor:0.1"
+    compile('com.google.code.gson:gson:2.8.5')
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    version 'IC-2019.1.3'
+    downloadSources true
+    updateSinceUntilBuild false
+}
+
+patchPluginXml {
+    changeNotes """
+      Add change notes here.<br>
+      <em>most HTML tags may be used</em>"""
+}
+
+generateGrammarSource {
+    arguments += ["-package", "deltix.luminary.grammar"]
+}
+
+task pushDistribution(type: Exec, dependsOn: buildPlugin) {
+
+    // without this closure path variable is incorrect!
+    doFirst {
+        def path = buildPlugin.getArchivePath().getAbsolutePath().toString()
+        def user = findProperty("PUBLISHER_USERNAME")
+        def pass = findProperty("PUBLISHER_PASSWORD")
+
+        println "pushing package ${path} under account ${user}"
+
+        commandLine "curl", "--silent", "--show-error", "--fail",
+                "${project.distributionUrl}/${version}/${buildPlugin.archivePath.name}",
+                "--user", "${user}:${pass}",
+                "--upload-file", "${path}"
+
+        //commandLine "cmd a ${apath}"
+    }
+}
+
+gitlabRelease {
+    distributionUrl = project.distributionUrl
+
+    mattermost {
+        webhooks = ["https://talks.deltixhub.com/hooks/4g3qu7yzqtdn8mam4qkuechiya"] // Luminary & Generators
+        title = "Luminary Jetbrains Plugin %s"
+        color = "#2752b0"
+    }
+}
+
+tasks.named("gitlabRelease").configure {
+    assets.add(buildPlugin.archivePath.name)
+}

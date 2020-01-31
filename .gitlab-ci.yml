@@ -1,0 +1,124 @@
+# Overwrite Gradle cache directory.
+# before_script:
+# - export GRADLE_USER_HOME=`pwd`/.gradle
+
+# Tell GitLab to cache it between jobs.
+
+stages:
+  - prepare
+  - build
+  - release
+  - publish
+  - trigger
+  - clean-up
+
+# Overwrite Gradle cache directory.
+before_script:
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+
+cache:
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+
+variables:
+  GRADLE_OPTS: "-Dfile.encoding=utf-8"
+
+"Prepare":
+  stage: prepare
+  script:
+    - export CI_PUSH_URL=`echo $CI_REPOSITORY_URL | perl -pe 's#.*@(.+?(\:\d+)?)/#git@\1:#'`
+    - echo $CI_PUSH_URL
+    - git config user.name "Robot"
+    - git config user.email "<internal@rtmath.net>"
+    - git checkout -b pipeline-$CI_PIPELINE_ID
+    - ./gradlew prepareReleaseVersion
+    - git commit -am "[Skip CI] Generate release version"
+    - ./gradlew prepareSnapshotVersion
+    - git commit -am "[Skip CI] Generate next development version"
+    - git remote set-url --push origin "${CI_PUSH_URL}"
+    - git push origin -u pipeline-$CI_PIPELINE_ID
+  tags:
+    - Linux
+    - ShellExecutor
+  only:
+    - /^release-.*$/
+  except:
+    - tags
+
+"Build: Java":
+  stage: build
+  image: packages.deltixhub.com:443/gitlabci.docker/library/openjdk-8-gradle-5.2.1:latest
+  script:
+    - export GRADLE_USER_HOME=`pwd`/.gradle
+    - git checkout origin/pipeline-$CI_PIPELINE_ID~1 || true
+    - ./gradlew buildPlugin
+  tags:
+    - Linux
+    - DockerExecutor
+  except:
+    - tags
+
+"Release":
+  stage: release
+  script:
+    - export CI_PUSH_URL=`echo $CI_REPOSITORY_URL | perl -pe 's#.*@(.+?(\:\d+)?)/#git@\1:#'`
+    - git config user.name "Robot"
+    - git config user.email "<internal@rtmath.net>"
+    - git remote set-url --push origin "${CI_PUSH_URL}"
+    - git checkout origin/pipeline-$CI_PIPELINE_ID~1
+    - ./gradlew pushVersion
+    - git checkout origin/pipeline-$CI_PIPELINE_ID
+    - git push origin origin/pipeline-$CI_PIPELINE_ID:${CI_BUILD_REF_NAME}
+  tags:
+    - Linux
+    - ShellExecutor
+  only:
+    - /^release-.*$/
+  except:
+    - tags
+
+"Publish Java":
+  stage: publish
+  image: packages.deltixhub.com:443/gitlabci.docker/library/openjdk-8-gradle-5.2.1:latest
+  script:
+    - git checkout origin/pipeline-$CI_PIPELINE_ID~1
+    - ./gradlew pushDistribution
+  only:
+    - /^release.*$/
+  dependencies:
+    - "Build: Java"
+  tags:
+    - Linux
+    - DockerExecutor
+  except:
+    - tags
+
+"Trigger GitLab Release & Mattermost Notification":
+  stage: trigger
+  dependencies: []
+  script:
+    - git checkout origin/pipeline-$CI_PIPELINE_ID~1
+    - ./gradlew gitlabRelease -S
+  only:
+    - /^release-.*$/
+  tags:
+    - Linux
+    - ShellExecutor
+
+"Clean Up":
+  stage: clean-up
+  script:
+    - export CI_PUSH_REPO=`echo $CI_REPOSITORY_URL | perl -pe 's#.*@(.+?(\:\d+)?)/#git@\1:#'`
+    - git config user.name "Robot"
+    - git config user.email "<internal@rtmath.net>"
+    - git remote set-url --push origin "${CI_PUSH_REPO}"
+    - git push origin --delete pipeline-$CI_PIPELINE_ID
+  only:
+    - /^release-.*$/
+  when: always
+  tags:
+    - Linux
+    - ShellExecutor
+  except:
+    - tags

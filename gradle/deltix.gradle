@@ -1,0 +1,25 @@
+repositories.ext.mavenDeltix = { name ->
+    repositories.maven {
+        credentials {
+            username findProperty('DELTIX_PROGET_USER')
+            password findProperty('DELTIX_PROGET_PASS')
+        }
+        authentication {
+            digest(BasicAuthentication)
+        }
+        url "https://packages.deltixhub.com/maven2/" + name
+    }
+}
+
+project.buildscript.repositories.ext.mavenDeltix = { name ->
+    project.buildscript.repositories.maven {
+        credentials {
+            username findProperty('DELTIX_PROGET_USER')
+            password findProperty('DELTIX_PROGET_PASS')
+        }
+        authentication {
+            digest(BasicAuthentication)
+        }
+        url "https://packages.deltixhub.com/maven2/" + name
+    }
+}

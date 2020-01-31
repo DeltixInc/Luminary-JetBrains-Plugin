@@ -1,0 +1,20 @@
+pluginManagement {
+    def properties = new Properties()
+    [rootDir, gradle.gradleUserHomeDir].each { dir -> new File(dir, "gradle.properties").with { file -> if (file.exists()) { file.withInputStream { is -> properties.load(is) }}}}
+
+    repositories {
+        maven {
+            credentials {
+                username properties.getProperty('DELTIX_PROGET_USER') ?: System.getenv('DELTIX_PROGET_USER') ?: "FakeProGetUser"
+                password properties.getProperty('DELTIX_PROGET_PASS') ?: System.getenv('DELTIX_PROGET_PASS') ?: "FakeProGetPass"
+            }
+            authentication {
+                digest(BasicAuthentication)
+            }
+            url 'https://packages.deltixhub.com/maven2/Deltix.Java'
+        }
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'luminary-plugin'

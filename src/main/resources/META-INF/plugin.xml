@@ -1,0 +1,27 @@
+<idea-plugin>
+    <id>deltix.luminary-grammar</id>
+    <name>Luminary</name>
+    <vendor email="dyarmalkevich@deltixlab.com" url="http://deltixlab.com">Deltix</vendor>
+
+    <description><![CDATA[
+    Deltix Luminary plugin.
+    ]]></description>
+
+    <idea-version since-build="145.0"/> <!-- requires IntelliJ 2016.x+ -->
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.lang</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileTypeFactory implementation="deltix.luminary.jetbrains.LuminaryFileTypeFactory"/>
+        <lang.parserDefinition language="Luminary" implementationClass="deltix.luminary.jetbrains.LuminaryParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="Luminary" implementationClass="deltix.luminary.jetbrains.LuminarySyntaxHighlighterFactory"/>
+        <annotator language="Luminary" implementationClass="deltix.luminary.jetbrains.annotators.LuminaryAnnotator"/>
+<!--        <completion.contributor language="Luminary" implementationClass="deltix.luminary.jetbrains.completion.TypeCompletion"/>-->
+    </extensions>
+
+    <actions>
+        <!-- Add your actions here -->
+    </actions>
+</idea-plugin>
